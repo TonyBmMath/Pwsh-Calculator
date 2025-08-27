@@ -1,9 +1,15 @@
+$Host.UI.RawUI.WindowTitle = "Calculator"
+Write-Host Please use the GUI window that just appeared...
+
 Add-Type -AssemblyName System.Windows.Forms
 
 # Create the form
 $form = New-Object Windows.Forms.Form
-$form.Text = "🧮 PowerShell GUI Calculator"
-$form.Size = '300,250'
+$form.FormBorderStyle = 'FixedDialog'
+$form.MaximizeBox = $false
+$form.MinimizeBox = $false
+$form.Text = "PowerShell GUI Calculator"
+$form.Size = '320,270'
 $form.StartPosition = 'CenterScreen'
 
 # Number 1 Input
@@ -64,38 +70,87 @@ Operator Guide:
 $resultLabel = New-Object Windows.Forms.Label
 $resultLabel.Text = "Result:"
 $resultLabel.Location = '10,140'
-$resultLabel.Size = '260,20'
+$resultLabel.Size = '280,20'
 $form.Controls.Add($resultLabel)
 
 # Calculate Button
 $calcButton = New-Object Windows.Forms.Button
 $calcButton.Text = "Calculate"
-$calcButton.Location = '100,170'
+$calcButton.Location = '80,180'
 $calcButton.Add_Click({
-    try {
-        $num1 = [double]$textBox1.Text
-        $num2 = [double]$textBox2.Text
-        $op = $comboBox.SelectedItem
+    $num1 = 0
+    $num2 = 0
+    $valid1 = [double]::TryParse($textBox1.Text, [ref]$num1)
+    $valid2 = [double]::TryParse($textBox2.Text, [ref]$num2)
+    $op = $comboBox.SelectedItem
 
+    if (-not ($valid1 -and $valid2)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter valid numbers.",
+            "Input Error",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    try {
         switch ($op) {
             '+' { $result = $num1 + $num2 }
             '-' { $result = $num1 - $num2 }
             '*' { $result = $num1 * $num2 }
             '/' {
-                if ($num2 -eq 0) { $result = "🚫 Cannot divide by zero" }
-                else { $result = $num1 / $num2 }
+                if ($num2 -eq 0) {
+                    [System.Windows.Forms.MessageBox]::Show(
+                        "Cannot divide by zero.",
+                        "Division Error",
+                        [System.Windows.Forms.MessageBoxButtons]::OK,
+                        [System.Windows.Forms.MessageBoxIcon]::Error
+                    )
+                    return
+                } else {
+                    $result = $num1 / $num2
+                }
             }
             '%' { $result = $num1 % $num2 }
             '^' { $result = [math]::Pow($num1, $num2) }
-            default { $result = "⚠️ Invalid operator" }
+            default {
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Invalid operator selected.",
+                    "Operator Error",
+                    [System.Windows.Forms.MessageBoxButtons]::OK,
+                    [System.Windows.Forms.MessageBoxIcon]::Warning
+                )
+                return
+            }
         }
 
         $resultLabel.Text = "Result: $result"
     } catch {
-        $resultLabel.Text = "❌ Error: Invalid input"
+        [System.Windows.Forms.MessageBox]::Show(
+            "An unexpected error occurred.",
+            "Calculation Error",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        )
     }
 })
 $form.Controls.Add($calcButton)
+
+# Clear Button
+$clearButton = New-Object Windows.Forms.Button
+$clearButton.Text = "Clear"
+$clearButton.Location = '170,180'
+$clearButton.Add_Click({
+    $textBox1.Clear()
+    $textBox2.Clear()
+    $comboBox.SelectedIndex = -1
+    $resultLabel.Text = "Result:"
+})
+$form.Controls.Add($clearButton)
+
+# Enable Enter key to trigger calculation
+$form.AcceptButton = $calcButton
 
 # Run the form
 [Windows.Forms.Application]::EnableVisualStyles()
